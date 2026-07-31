@@ -38,10 +38,22 @@ if os.path.exists(FRONTEND_DIR):
     @app.middleware("http")
     async def serve_frontend(request: Request, call_next):
         if request.url.path.startswith("/api/"):
-            return await call_next(request)
+            response = await call_next(request)
+            return response
+
         path = request.url.path.lstrip("/") or "index.html"
         file_path = os.path.join(FRONTEND_DIR, path)
-        if os.path.isfile(file_path):
+
+        if os.path.isfile(file_path) and not os.path.isdir(file_path):
             return FileResponse(file_path)
+
+        html_path = file_path + ".html"
+        if os.path.isfile(html_path):
+            return FileResponse(html_path, media_type="text/html")
+
+        dir_index = os.path.join(file_path, "index.html")
+        if os.path.isfile(dir_index):
+            return FileResponse(dir_index, media_type="text/html")
+
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
