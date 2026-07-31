@@ -4,9 +4,25 @@ import httpx
 import numpy as np
 from loguru import logger
 
-from nltk.sentiment import SentimentIntensityAnalyzer
+_sia = None
 
-_sia = SentimentIntensityAnalyzer()
+
+def _get_sia():
+    global _sia
+    if _sia is not None:
+        return _sia
+    try:
+        import nltk
+        try:
+            nltk.data.find("sentiment/vader_lexicon.zip")
+        except LookupError:
+            nltk.download("vader_lexicon", quiet=True)
+        from nltk.sentiment import SentimentIntensityAnalyzer
+        _sia = SentimentIntensityAnalyzer()
+        return _sia
+    except Exception as e:
+        logger.warning(f"NLTK/VADER unavailable: {e}")
+        return None
 
 ASSET_KEYWORDS = {
     "BTC/USDT": ["bitcoin", "btc", "crypto market cap", "crypto regulation"],
@@ -35,7 +51,10 @@ async def fetch_crypto_news(limit: int = 20) -> list[dict]:
 
 
 def analyze_text(text: str) -> float:
-    scores = _sia.polarity_scores(text)
+    sia = _get_sia()
+    if sia is None:
+        return 0.0
+    scores = sia.polarity_scores(text)
     return scores["compound"]
 
 
