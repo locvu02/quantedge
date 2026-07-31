@@ -72,7 +72,8 @@ class PaperTradingEngine:
         # Sentiment filter
         try:
             from core.models.sentiment import fetch_crypto_news, get_sentiment_for_symbol
-            articles = fetch_crypto_news(limit=10)
+            import asyncio as _asyncio
+            articles = await fetch_crypto_news(limit=10)
             sentiment = get_sentiment_for_symbol(symbol, articles)
             if sentiment and sentiment["bias"] == "bearish" and direction == "long":
                 return
