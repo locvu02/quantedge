@@ -38,6 +38,7 @@ def _get_binance() -> ccxt.Exchange:
 
 def _fetch_crypto_from_coingecko(symbol: str, timeframe: str, since_ms: int, limit: int):
     import requests
+    import time as _time
 
     cg_map = {
         "BTC/USDT": "bitcoin",
@@ -45,24 +46,29 @@ def _fetch_crypto_from_coingecko(symbol: str, timeframe: str, since_ms: int, lim
     }
     coin_id = cg_map.get(symbol, symbol.split("/")[0].lower())
 
-    tf_map = {"1h": "hourly", "4h": "hourly_4", "1d": "daily"}
-    vs_currency = "usd"
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc"
+    params = {"vs_currency": "usd", "days": "90"}
 
-    if timeframe == "1d":
-        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc"
-        params = {"vs_currency": vs_currency, "days": "90"}
-    else:
-        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc"
-        params = {"vs_currency": vs_currency, "days": "90"}
-
-    try:
-        resp = requests.get(url, params=params, timeout=15)
-        if resp.status_code != 200:
-            logger.warning(f"CoinGecko failed for {symbol}: {resp.status_code}")
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, params=params, timeout=15)
+            if resp.status_code == 429:
+                wait = (attempt + 1) * 5
+                logger.warning(f"CoinGecko rate limited, retrying in {wait}s...")
+                _time.sleep(wait)
+                continue
+            if resp.status_code != 200:
+                logger.warning(f"CoinGecko failed for {symbol}: {resp.status_code}")
+                return []
+            data = resp.json()
+            break
+        except Exception as e:
+            if attempt < 2:
+                _time.sleep(3)
+                continue
+            logger.warning(f"CoinGecko request failed for {symbol}: {e}")
             return []
-        data = resp.json()
-    except Exception as e:
-        logger.warning(f"CoinGecko request failed for {symbol}: {e}")
+    else:
         return []
 
     ohlcv_list = []
@@ -220,6 +226,8 @@ async def fetch_and_save_pipeline(
     timeframes: list[str] = None,
     days_back: int = 90,
 ):
+    import asyncio as _asyncio
+
     if symbols is None:
         symbols = SYMBOLS["crypto"] + SYMBOLS["forex"]
     if timeframes is None:
@@ -238,6 +246,7 @@ async def fetch_and_save_pipeline(
             except Exception as e:
                 logger.error(f"  Failed {symbol} {tf}: {e}")
                 continue
+            await _asyncio.sleep(2)
 
 
 async def watch_ticker_ws(symbols: list[str] = None):
