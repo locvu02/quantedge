@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import os
 
 from core.data.database import init_db
@@ -28,15 +29,19 @@ app.include_router(trading.router, prefix="/api/trading", tags=["Trading"])
 app.include_router(sentiment_router.router, prefix="/api/sentiment", tags=["Sentiment"])
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "out")
+
 if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    @app.get("/api/health")
+    async def health():
+        return {"status": "ok", "version": "0.2.0"}
 
+    @app.middleware("http")
+    async def serve_frontend(request: Request, call_next):
+        if request.url.path.startswith("/api/"):
+            return await call_next(request)
+        path = request.url.path.lstrip("/") or "index.html"
+        file_path = os.path.join(FRONTEND_DIR, path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
-@app.on_event("startup")
-async def startup():
-    init_db()
-
-
-@app.get("/api/health")
-async def health():
-    return {"status": "ok", "version": "0.2.0"}
