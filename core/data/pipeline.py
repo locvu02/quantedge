@@ -36,14 +36,49 @@ def _get_binance() -> ccxt.Exchange:
     return ccxt.binance(kwargs)
 
 
+def _fetch_crypto_from_coingecko(symbol: str, timeframe: str, since_ms: int, limit: int):
+    import requests
+
+    cg_map = {
+        "BTC/USDT": "bitcoin",
+        "ETH/USDT": "ethereum",
+    }
+    coin_id = cg_map.get(symbol, symbol.split("/")[0].lower())
+
+    tf_map = {"1h": "hourly", "4h": "hourly_4", "1d": "daily"}
+    vs_currency = "usd"
+
+    if timeframe == "1d":
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc"
+        params = {"vs_currency": vs_currency, "days": "90"}
+    else:
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc"
+        params = {"vs_currency": vs_currency, "days": "90"}
+
+    try:
+        resp = requests.get(url, params=params, timeout=15)
+        if resp.status_code != 200:
+            logger.warning(f"CoinGecko failed for {symbol}: {resp.status_code}")
+            return []
+        data = resp.json()
+    except Exception as e:
+        logger.warning(f"CoinGecko request failed for {symbol}: {e}")
+        return []
+
+    ohlcv_list = []
+    for item in data:
+        ts = item[0]
+        o, h, l, c = float(item[1]), float(item[2]), float(item[3]), float(item[4])
+        ohlcv_list.append([ts, o, h, l, c, 0.0])
+    return ohlcv_list
+
+
 def _fetch_forex_from_yahoo(symbol: str, timeframe: str, since_ms: int, limit: int):
     import yfinance as yf
 
     yf_map = {
         "XAU/USD": "GC=F",
         "EUR/USD": "EURUSD=X",
-        "BTC/USDT": "BTC-USD",
-        "ETH/USDT": "ETH-USD",
     }
     yf_symbol = yf_map.get(symbol, symbol.replace("/", "") + "=X")
 
@@ -85,12 +120,7 @@ async def fetch_ohlcv(
     since_ms = int(since.timestamp() * 1000) if since else None
 
     if exchange_type == "crypto":
-        try:
-            exchange = get_exchange(exchange_type)
-            ohlcv_data = exchange.fetch_ohlcv(symbol, timeframe, since=since_ms, limit=limit)
-        except Exception:
-            logger.warning(f"Binance failed for {symbol}, using yfinance fallback")
-            ohlcv_data = _fetch_forex_from_yahoo(symbol, timeframe, since_ms, limit)
+        ohlcv_data = _fetch_crypto_from_coingecko(symbol, timeframe, since_ms, limit)
     else:
         ohlcv_data = _fetch_forex_from_yahoo(symbol, timeframe, since_ms, limit)
 
