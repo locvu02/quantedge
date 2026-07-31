@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 .env
 quantedge.db
-models_saved/
 node_modules/
 .next/
 *.log

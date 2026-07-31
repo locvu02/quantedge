@@ -16,7 +16,7 @@ async def run_backtest(
     if len(df) < 300:
         return {"error": f"Need at least 300 candles, got {len(df)}"}
 
-    engine = BacktestEngine(initial_balance=initial_balance)
+    engine = BacktestEngine(initial_balance=initial_balance, use_ml=True)
     result = engine.run(df, symbol)
 
     return {
@@ -45,7 +45,7 @@ async def run_backtest(
 async def scan_backtests(timeframe: str = Query("1h", pattern="^(1h|4h|1d)$")):
     symbols = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
     results = []
-    engine = BacktestEngine(initial_balance=10000)
+    engine = BacktestEngine(initial_balance=10000, use_ml=True)
 
     for sym in symbols:
         df = load_ohlcv_from_db(sym, timeframe)

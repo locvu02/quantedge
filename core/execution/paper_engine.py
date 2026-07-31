@@ -69,6 +69,18 @@ class PaperTradingEngine:
             if ml_pred and ml_pred["confidence"] < 0.55:
                 return
 
+        # Sentiment filter
+        try:
+            from core.models.sentiment import fetch_crypto_news, get_sentiment_for_symbol
+            articles = fetch_crypto_news(limit=10)
+            sentiment = get_sentiment_for_symbol(symbol, articles)
+            if sentiment and sentiment["bias"] == "bearish" and direction == "long":
+                return
+            if sentiment and sentiment["bias"] == "bullish" and direction == "short":
+                return
+        except Exception:
+            pass
+
         direction = signal["direction"]
         entry = signal["entry_price"]
         sl = signal["stop_loss"]

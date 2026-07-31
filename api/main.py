@@ -2,15 +2,38 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
+import asyncio
 import os
 
 from core.data.database import init_db
-from api.routers import data, signals, backtest, account, trading, sentiment_router
+from api.routers import data, signals, backtest, account, trading, sentiment_router, monitor
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+
+    # Start paper trading engine in background
+    try:
+        from core.execution.paper_engine import paper_engine
+        asyncio.create_task(paper_engine.start())
+    except Exception:
+        pass
+
+    # Auto-fetch initial data on startup
+    try:
+        from core.data.pipeline import fetch_and_save_pipeline
+        asyncio.create_task(fetch_and_save_pipeline(days_back=90))
+    except Exception:
+        pass
+
+    # Start auto-retrain scheduler
+    try:
+        from core.models.trainer import auto_retrain_scheduler
+        asyncio.create_task(auto_retrain_scheduler())
+    except Exception:
+        pass
+
     yield
 
 
@@ -35,6 +58,7 @@ app.include_router(backtest.router, prefix="/api/backtest", tags=["Backtest"])
 app.include_router(account.router, prefix="/api/account", tags=["Account"])
 app.include_router(trading.router, prefix="/api/trading", tags=["Trading"])
 app.include_router(sentiment_router.router, prefix="/api/sentiment", tags=["Sentiment"])
+app.include_router(monitor.router, prefix="/api/monitor", tags=["Monitor"])
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "out")
 

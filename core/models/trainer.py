@@ -157,3 +157,23 @@ def predict(model: HistGradientBoostingClassifier, df: pd.DataFrame, scaler=None
         "direction": "long" if pred == 1 else "short",
         "confidence": round(max(prob, 1 - prob), 3),
     }
+
+
+async def auto_retrain_scheduler():
+    import asyncio as _asyncio
+    from core.data.pipeline import load_ohlcv_from_db
+
+    SYMBOLS = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
+
+    while True:
+        await _asyncio.sleep(86400)
+        logger.info("Auto-retraining ML models...")
+        for symbol in SYMBOLS:
+            try:
+                df = load_ohlcv_from_db(symbol, "1h")
+                if len(df) < 500:
+                    logger.warning(f"{symbol}: not enough data for retrain")
+                    continue
+                train_model(symbol, df)
+            except Exception as e:
+                logger.error(f"Retrain failed for {symbol}: {e}")
