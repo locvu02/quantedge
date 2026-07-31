@@ -7,7 +7,9 @@ import numpy as np
 from loguru import logger
 
 from core.engine.indicators import compute_all_indicators
-from core.engine.strategies import generate_signals, Direction
+from core.engine.strategies import Direction
+from core.engine.signals import generate_regime_signals
+from core.engine.regime import detect_regime, regime_confidence, MarketRegime
 from core.risk.manager import RiskManager, Position
 
 
@@ -81,7 +83,10 @@ class BacktestEngine:
                 })
 
             if rm.account.open_positions_count == 0 and i < len(df) - 1:
-                signals = generate_signals(window)
+                signals = generate_regime_signals(window)
+                regime = detect_regime(window)
+                regime_conf = regime_confidence(window, regime)
+
                 if not signals:
                     continue
 
@@ -95,6 +100,7 @@ class BacktestEngine:
                 best_signals = long_signals if len(long_signals) >= len(short_signals) else short_signals
                 if len(best_signals) >= 1:
                     avg_conf = np.mean([s.confidence for s in best_signals])
+                    avg_conf = min(0.95, avg_conf + regime_conf * 0.2)
                     if avg_conf >= 0.5:
                         direction = best_signals[0].direction.value
 
@@ -108,12 +114,19 @@ class BacktestEngine:
                         entry = float(current["close"])
                         atr = float(current.get("atr_14", entry * 0.01))
 
-                        if direction == "long":
-                            sl = entry - 2 * atr
-                            tp = entry + 3 * atr
+                        if regime == MarketRegime.VOLATILE:
+                            sl_m, tp_m = 3.0, 4.0
+                        elif regime == MarketRegime.TRENDING:
+                            sl_m, tp_m = 2.0, 3.5
                         else:
-                            sl = entry + 2 * atr
-                            tp = entry - 3 * atr
+                            sl_m, tp_m = 2.0, 3.0
+
+                        if direction == "long":
+                            sl = entry - sl_m * atr
+                            tp = entry + tp_m * atr
+                        else:
+                            sl = entry + sl_m * atr
+                            tp = entry - tp_m * atr
 
                         rr_valid, _ = rm.validate_risk_reward(entry, sl, tp)
                         if rr_valid:
