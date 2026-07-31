@@ -66,6 +66,56 @@ class BacktestEngine:
             prices = {symbol: float(current["close"])}
             rm.update_market_prices(prices)
 
+            # Dynamic trailing stop
+            for pos in list(rm.account.positions):
+                if pos.direction == "long":
+                    profit_r = (pos.current_price - pos.entry_price) / (pos.entry_price - pos.stop_loss) if pos.entry_price > pos.stop_loss else 0
+                    if profit_r > 1.0:
+                        new_sl = pos.entry_price + (pos.current_price - pos.entry_price) * 0.5
+                        if new_sl > pos.stop_loss:
+                            pos.stop_loss = new_sl
+                    if profit_r > 2.0:
+                        new_sl = pos.entry_price + (pos.current_price - pos.entry_price) * 0.7
+                        if new_sl > pos.stop_loss:
+                            pos.stop_loss = new_sl
+                else:
+                    profit_r = (pos.entry_price - pos.current_price) / (pos.stop_loss - pos.entry_price) if pos.stop_loss > pos.entry_price else 0
+                    if profit_r > 1.0:
+                        new_sl = pos.entry_price - (pos.entry_price - pos.current_price) * 0.5
+                        if new_sl < pos.stop_loss:
+                            pos.stop_loss = new_sl
+                    if profit_r > 2.0:
+                        new_sl = pos.entry_price - (pos.entry_price - pos.current_price) * 0.7
+                        if new_sl < pos.stop_loss:
+                            pos.stop_loss = new_sl
+
+                if pos.direction == "long" and pos.current_price <= pos.stop_loss:
+                    pnl = rm.close_position(pos, pos.stop_loss, "trailing_stop")
+                    trades.append({
+                        "symbol": pos.symbol,
+                        "direction": pos.direction,
+                        "entry_time": pos.entry_time.isoformat(),
+                        "exit_time": ts.isoformat(),
+                        "entry_price": pos.entry_price,
+                        "exit_price": pos.stop_loss,
+                        "quantity": pos.quantity,
+                        "pnl": round(pnl, 2),
+                        "exit_reason": "trailing_stop",
+                    })
+                elif pos.direction == "short" and pos.current_price >= pos.stop_loss:
+                    pnl = rm.close_position(pos, pos.stop_loss, "trailing_stop")
+                    trades.append({
+                        "symbol": pos.symbol,
+                        "direction": pos.direction,
+                        "entry_time": pos.entry_time.isoformat(),
+                        "exit_time": ts.isoformat(),
+                        "entry_price": pos.entry_price,
+                        "exit_price": pos.stop_loss,
+                        "quantity": pos.quantity,
+                        "pnl": round(pnl, 2),
+                        "exit_reason": "trailing_stop",
+                    })
+
             stopped = rm.check_stops()
             for pos, reason in stopped:
                 exit_price = pos.stop_loss if reason == "stop_loss" else pos.take_profit
@@ -137,9 +187,37 @@ class BacktestEngine:
 
                         rr_valid, _ = rm.validate_risk_reward(entry, sl, tp)
                         if rr_valid:
-                            pos = rm.open_position(symbol, direction, entry, sl, tp)
-                            if pos:
+                            # Kelly position sizing
+                            if len(trades) >= 5:
+                                wins = sum(1 for t in trades if t.get("pnl", 0) > 0)
+                                losses = len(trades) - wins
+                                win_rate_kelly = wins / len(trades) if len(trades) > 0 else 0.5
+                                avg_w = np.mean([t["pnl"] for t in trades if t.get("pnl", 0) > 0]) if wins > 0 else 100
+                                avg_l = abs(np.mean([t["pnl"] for t in trades if t.get("pnl", 0) <= 0])) if losses > 0 else 100
+                                kelly_r = avg_w / avg_l if avg_l > 0 else 2.0
+                                kelly_f = max(0.01, min(0.03, win_rate_kelly - (1 - win_rate_kelly) / kelly_r))
+                            else:
+                                kelly_f = 0.02
+
+                            if rm.account.drawdown_pct > 0.10:
+                                kelly_f = min(kelly_f, 0.015)
+                            elif rm.account.drawdown_pct > 0.05:
+                                kelly_f = min(kelly_f, 0.02)
+
+                            risk_amount = rm.account.equity * kelly_f
+                            from core.engine.time_filter import session_risk_multiplier
+                            risk_amount *= session_risk_multiplier(symbol, ts)
+                            price_risk = abs(entry - sl)
+                            if price_risk > 0:
+                                qty = risk_amount / price_risk
+                                pos = Position(
+                                    symbol=symbol, direction=direction,
+                                    entry_price=entry, quantity=qty,
+                                    stop_loss=sl, take_profit=tp,
+                                )
+                                pos.current_price = entry
                                 pos.entry_time = ts
+                                rm.account.positions.append(pos)
 
             equity.append({
                 "timestamp": ts.isoformat(),
