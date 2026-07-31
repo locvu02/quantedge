@@ -125,8 +125,6 @@ class RiskManager:
         else:
             pnl = (position.entry_price - exit_price) * position.quantity
 
-        pnl_pct = pnl / (position.entry_price * position.quantity)
-
         self.account.realized_pnl += pnl
         self.account.balance += pnl
         self.account.total_trades += 1
