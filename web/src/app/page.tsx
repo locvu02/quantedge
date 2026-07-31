@@ -54,9 +54,14 @@ export default function Dashboard() {
 
   const btData = useApi<any>(`${API}/backtest/scan?timeframe=1h`);
   const sigData = useApi<any>(`${API}/signals/scan?timeframe=1h`);
+  const sentData = useApi<any>(`${API}/sentiment/scan`);
+  const [monitor, setMonitor] = useState<any>(null);
+
+  useEffect(() => { fetch(`${API}/monitor/status`).then(r => r.json()).then(setMonitor).catch(() => {}); }, []);
 
   const backtests = (btData?.results || []).filter((r: any) => r.total_return_pct != null);
   const signals = (sigData?.results || []).filter((r: any) => r.signal).map((r: any) => ({ symbol: r.symbol, ...r.signal }));
+  const sentiments = sentData?.results || [];
 
   useEffect(() => {
     fetch(`${API}/backtest/run/${selectedSymbol}?timeframe=${selectedTf}`)
@@ -127,6 +132,51 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
+          <h2 className="text-lg font-semibold mb-4">Market Sentiment</h2>
+          {sentiments.length === 0 ? (
+            <p className="text-[var(--muted)] text-sm">Loading sentiment data...</p>
+          ) : (
+            <div className="space-y-3">
+              {sentiments.map((s: any, i: number) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-xs font-medium w-16">{s.symbol}</span>
+                  <div className="flex-1 h-2 bg-[var(--bg)] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        s.bias === "bullish" ? "bg-[var(--green)]" : s.bias === "bearish" ? "bg-[var(--red)]" : "bg-[var(--muted)]"
+                      }`}
+                      style={{ width: `${Math.abs(s.sentiment_score * 100)}%`, marginLeft: s.sentiment_score < 0 ? "auto" : 0 }}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium w-16 text-right ${
+                    s.bias === "bullish" ? "text-[var(--green)]" : s.bias === "bearish" ? "text-[var(--red)]" : "text-[var(--muted)]"
+                  }`}>
+                    {s.bias.toUpperCase()} ({s.article_count})
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6">
+          <h2 className="text-lg font-semibold mb-4">System Health</h2>
+          {monitor ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-[var(--muted)]">Server</span><span className="text-[var(--green)]">Running</span></div>
+              <div className="flex justify-between"><span className="text-[var(--muted)]">Paper Trading</span><span className={monitor.paper_trading ? "text-[var(--green)]" : "text-[var(--muted)]"}>{monitor.paper_trading ? "Active" : "Paused"}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--muted)]">Data Candles</span><span>{monitor.database?.ohlcv_candles?.toLocaleString() || 0}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--muted)]">ML Models</span><span className="text-[var(--accent)]">{monitor.ml_models?.length || 0} loaded</span></div>
+              <div className="flex justify-between"><span className="text-[var(--muted)]">Total Trades</span><span>{monitor.database?.trades || 0}</span></div>
+            </div>
+          ) : (
+            <p className="text-[var(--muted)] text-sm">Loading...</p>
           )}
         </div>
       </div>
