@@ -1,16 +1,24 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from contextlib import asynccontextmanager
 import os
 
 from core.data.database import init_db
 from api.routers import data, signals, backtest, account, trading, sentiment_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="QuantEdge API",
     description="AI-powered automated trading system",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -30,11 +38,13 @@ app.include_router(sentiment_router.router, prefix="/api/sentiment", tags=["Sent
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "out")
 
-if os.path.exists(FRONTEND_DIR):
-    @app.get("/api/health")
-    async def health():
-        return {"status": "ok", "version": "0.2.0"}
 
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "version": "0.2.0"}
+
+
+if os.path.exists(FRONTEND_DIR):
     @app.middleware("http")
     async def serve_frontend(request: Request, call_next):
         if request.url.path.startswith("/api/"):
