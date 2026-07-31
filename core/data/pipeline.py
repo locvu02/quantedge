@@ -5,7 +5,7 @@ from typing import Optional
 import ccxt
 import pandas as pd
 from loguru import logger
-from sqlalchemy import select, insert
+from sqlalchemy import select, text
 
 from config.settings import settings
 from core.data.database import SessionLocal, init_db
@@ -42,6 +42,8 @@ def _fetch_forex_from_yahoo(symbol: str, timeframe: str, since_ms: int, limit: i
     yf_map = {
         "XAU/USD": "GC=F",
         "EUR/USD": "EURUSD=X",
+        "BTC/USDT": "BTC-USD",
+        "ETH/USDT": "ETH-USD",
     }
     yf_symbol = yf_map.get(symbol, symbol.replace("/", "") + "=X")
 
@@ -82,11 +84,15 @@ async def fetch_ohlcv(
     exchange_type = "crypto" if "/USDT" in symbol else "forex"
     since_ms = int(since.timestamp() * 1000) if since else None
 
-    if exchange_type == "forex":
-        ohlcv_data = _fetch_forex_from_yahoo(symbol, timeframe, since_ms, limit)
+    if exchange_type == "crypto":
+        try:
+            exchange = get_exchange(exchange_type)
+            ohlcv_data = exchange.fetch_ohlcv(symbol, timeframe, since=since_ms, limit=limit)
+        except Exception:
+            logger.warning(f"Binance failed for {symbol}, using yfinance fallback")
+            ohlcv_data = _fetch_forex_from_yahoo(symbol, timeframe, since_ms, limit)
     else:
-        exchange = get_exchange(exchange_type)
-        ohlcv_data = exchange.fetch_ohlcv(symbol, timeframe, since=since_ms, limit=limit)
+        ohlcv_data = _fetch_forex_from_yahoo(symbol, timeframe, since_ms, limit)
 
     df = pd.DataFrame(
         ohlcv_data,
@@ -102,24 +108,30 @@ async def fetch_ohlcv(
 def save_ohlcv_to_db(df: pd.DataFrame):
     db = SessionLocal()
     try:
+        from core.data.models import OHLCV as OHLCVModel
         records = df.to_dict(orient="records")
+        saved = 0
         for record in records:
-            stmt = insert(OHLCV).values(
-                symbol=record["symbol"],
-                timeframe=record["timeframe"],
-                timestamp=record["timestamp"],
-                open=record["open"],
-                high=record["high"],
-                low=record["low"],
-                close=record["close"],
-                volume=record["volume"],
-            )
-            stmt = stmt.on_conflict_do_nothing(
-                index_elements=["symbol", "timeframe", "timestamp"]
-            )
-            db.execute(stmt)
+            exists = db.query(OHLCVModel).filter(
+                OHLCVModel.symbol == record["symbol"],
+                OHLCVModel.timeframe == record["timeframe"],
+                OHLCVModel.timestamp == record["timestamp"],
+            ).first()
+            if not exists:
+                candle = OHLCVModel(
+                    symbol=record["symbol"],
+                    timeframe=record["timeframe"],
+                    timestamp=record["timestamp"],
+                    open=record["open"],
+                    high=record["high"],
+                    low=record["low"],
+                    close=record["close"],
+                    volume=record["volume"],
+                )
+                db.add(candle)
+                saved += 1
         db.commit()
-        logger.info(f"Saved {len(records)} candles to DB")
+        logger.info(f"Saved {saved} new candles to DB (skipped {len(records) - saved} existing)")
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to save OHLCV: {e}")
