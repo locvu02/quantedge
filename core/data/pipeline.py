@@ -85,6 +85,8 @@ def _fetch_forex_from_yahoo(symbol: str, timeframe: str, since_ms: int, limit: i
     yf_map = {
         "XAU/USD": "GC=F",
         "EUR/USD": "EURUSD=X",
+        "BTC/USDT": "BTC-USD",
+        "ETH/USDT": "ETH-USD",
     }
     yf_symbol = yf_map.get(symbol, symbol.replace("/", "") + "=X")
 
@@ -126,7 +128,7 @@ async def fetch_ohlcv(
     since_ms = int(since.timestamp() * 1000) if since else None
 
     if exchange_type == "crypto":
-        ohlcv_data = _fetch_crypto_from_coingecko(symbol, timeframe, since_ms, limit)
+        ohlcv_data = _fetch_forex_from_yahoo(symbol, timeframe, since_ms, limit)
     else:
         ohlcv_data = _fetch_forex_from_yahoo(symbol, timeframe, since_ms, limit)
 
