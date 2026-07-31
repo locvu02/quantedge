@@ -55,6 +55,13 @@ class BacktestEngine:
             if loaded:
                 ml_model, ml_meta, ml_scaler = loaded
 
+        lstm_model = None
+        if self.use_ml:
+            from core.models.lstm_model import load_lstm
+            lstm_loaded = load_lstm(symbol)
+            if lstm_loaded:
+                lstm_model, _ = lstm_loaded
+
         warmup = 200
         min_candles = max(warmup, 300)  # ML needs more data
 
@@ -161,6 +168,14 @@ class BacktestEngine:
                                 continue
                             if ml_pred and ml_pred["confidence"] < 0.55:
                                 continue
+
+                        if lstm_model is not None:
+                            from core.models.lstm_model import predict_lstm
+                            lstm_pred = predict_lstm(lstm_model, window)
+                            if lstm_pred and lstm_pred["direction"] != direction:
+                                continue
+                            if lstm_pred:
+                                avg_conf = min(0.95, avg_conf + lstm_pred["confidence"] * 0.1)
 
                         from core.engine.multi_tf import higher_tf_confirm
                         htf_ok, htf_conf = higher_tf_confirm(symbol, direction)
