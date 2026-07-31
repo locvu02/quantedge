@@ -111,6 +111,13 @@ class BacktestEngine:
                                 continue
                             if ml_pred and ml_pred["confidence"] < 0.55:
                                 continue
+
+                        from core.engine.multi_tf import higher_tf_confirm
+                        htf_ok, htf_conf = higher_tf_confirm(symbol, direction)
+                        if not htf_ok:
+                            continue
+                        avg_conf = min(0.95, avg_conf + htf_conf * 0.1)
+
                         entry = float(current["close"])
                         atr = float(current.get("atr_14", entry * 0.01))
 
