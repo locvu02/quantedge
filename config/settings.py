@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    jwt_secret_key: str = "change-me-in-production-use-a-real-secret-key"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

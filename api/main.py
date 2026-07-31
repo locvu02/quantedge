@@ -6,7 +6,7 @@ import asyncio
 import os
 
 from core.data.database import init_db
-from api.routers import data, signals, backtest, account, trading, sentiment_router, monitor
+from api.routers import data, signals, backtest, account, trading, sentiment_router, monitor, auth_router
 
 
 @asynccontextmanager
@@ -59,6 +59,7 @@ app.include_router(account.router, prefix="/api/account", tags=["Account"])
 app.include_router(trading.router, prefix="/api/trading", tags=["Trading"])
 app.include_router(sentiment_router.router, prefix="/api/sentiment", tags=["Sentiment"])
 app.include_router(monitor.router, prefix="/api/monitor", tags=["Monitor"])
+app.include_router(auth_router.router, prefix="/api/auth", tags=["Auth"])
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "web", "out")
 
