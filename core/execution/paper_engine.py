@@ -98,6 +98,16 @@ class PaperTradingEngine:
         except Exception:
             pass
 
+        # Whale tracking filter
+        try:
+            from core.models.whale_tracker import get_whale_alert
+            whale = await get_whale_alert(symbol)
+            if whale and whale["direction"] != "neutral" and whale["direction"] != direction and whale["whale_signal"] != 0 and abs(whale["whale_signal"]) >= 2:
+                logger.info(f"🐋 WHALE BLOCK: {symbol} {direction} blocked by whale alert ({whale['alerts']})")
+                return
+        except Exception:
+            pass
+
         direction = signal["direction"]
         entry = signal["entry_price"]
         sl = signal["stop_loss"]
