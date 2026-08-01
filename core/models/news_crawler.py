@@ -103,7 +103,9 @@ async def generate_news_signal(symbol: str) -> Optional[dict]:
         "BTC/USDT": ["bitcoin", "btc", "crypto market", "crypto regulation", "bitcoin etf"],
         "ETH/USDT": ["ethereum", "eth", "defi", "layer 2", "smart contract"],
         "XAU/USD": ["gold", "xau", "precious metal", "inflation", "fed"],
-        "EUR/USD": ["eur", "euro", "ecb", "dollar", "eurozone"],
+        "XAG/USD": ["silver", "xag", "precious metal", "industrial"],
+        "SOL/USDT": ["solana", "sol", "layer 1"],
+        "USD/JPY": ["usd", "jpy", "yen", "boj", "dollar yen"],
     }
     keywords = keywords_map.get(symbol, [symbol.lower()])
 

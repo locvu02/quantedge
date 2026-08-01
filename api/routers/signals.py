@@ -26,7 +26,7 @@ async def analyze_symbol(
 
 @router.get("/scan")
 async def scan_all(timeframe: str = Query("1h", pattern="^(1h|4h|1d)$")):
-    symbols = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
+    symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XAU/USD", "XAG/USD", "USD/JPY"]
     results = []
     for sym in symbols:
         df = load_ohlcv_from_db(sym, timeframe)

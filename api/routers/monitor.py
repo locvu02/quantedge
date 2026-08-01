@@ -21,7 +21,7 @@ async def system_status():
         db.close()
 
     models_loaded = []
-    for symbol in ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]:
+    for symbol in ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XAU/USD", "XAG/USD", "USD/JPY"]:
         loaded = load_model(symbol)
         if loaded:
             _, meta, _ = loaded

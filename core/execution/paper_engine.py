@@ -14,7 +14,7 @@ from core.engine.signals import SignalEngine
 from core.risk.manager import RiskManager
 from core.models.trainer import load_model, predict as ml_predict
 
-SYMBOLS = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
+SYMBOLS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XAU/USD", "XAG/USD", "USD/JPY"]
 TIMEFRAMES = ["1h", "4h"]
 
 

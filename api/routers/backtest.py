@@ -43,7 +43,7 @@ async def run_backtest(
 
 @router.get("/scan")
 async def scan_backtests(timeframe: str = Query("1h", pattern="^(1h|4h|1d)$")):
-    symbols = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
+    symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XAU/USD", "XAG/USD", "USD/JPY"]
     results = []
     engine = BacktestEngine(initial_balance=10000, use_ml=True)
 

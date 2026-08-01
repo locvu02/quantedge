@@ -35,8 +35,8 @@ class PortfolioRiskManager:
     def update_correlations(self):
         pairs = [
             ("BTC/USDT", "ETH/USDT"),
-            ("XAU/USD", "EUR/USD"),
-            ("BTC/USDT", "XAU/USD"),
+            ("XAU/USD", "XAG/USD"),
+            ("BTC/USDT", "SOL/USDT"),
         ]
         for a, b in pairs:
             self.correlation_matrix[(a, b)] = compute_correlation(a, b)

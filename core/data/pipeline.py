@@ -12,8 +12,8 @@ from core.data.database import SessionLocal, init_db
 from core.data.models import OHLCV
 
 SYMBOLS = {
-    "crypto": ["BTC/USDT", "ETH/USDT"],
-    "forex": ["XAU/USD", "EUR/USD"],
+    "crypto": ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+    "forex": ["XAU/USD", "XAG/USD", "USD/JPY"],
 }
 
 TIMEFRAMES = {
@@ -43,6 +43,7 @@ def _fetch_crypto_from_coingecko(symbol: str, timeframe: str, since_ms: int, lim
     cg_map = {
         "BTC/USDT": "bitcoin",
         "ETH/USDT": "ethereum",
+        "SOL/USDT": "solana",
     }
     coin_id = cg_map.get(symbol, symbol.split("/")[0].lower())
 
@@ -84,9 +85,12 @@ def _fetch_forex_from_yahoo(symbol: str, timeframe: str, since_ms: int, limit: i
 
     yf_map = {
         "XAU/USD": "GC=F",
+        "XAG/USD": "SI=F",
+        "USD/JPY": "JPY=X",
         "EUR/USD": "EURUSD=X",
         "BTC/USDT": "BTC-USD",
         "ETH/USDT": "ETH-USD",
+        "SOL/USDT": "SOL-USD",
     }
     yf_symbol = yf_map.get(symbol, symbol.replace("/", "") + "=X")
 

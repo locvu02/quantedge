@@ -163,7 +163,7 @@ async def auto_retrain_scheduler():
     import asyncio as _asyncio
     from core.data.pipeline import load_ohlcv_from_db
 
-    SYMBOLS = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
+    SYMBOLS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XAU/USD", "XAG/USD", "USD/JPY"]
 
     while True:
         await _asyncio.sleep(86400)

@@ -5,7 +5,7 @@ from core.data.pipeline import load_ohlcv_from_db, fetch_and_save_pipeline
 
 router = APIRouter()
 
-SYMBOLS = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
+SYMBOLS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XAU/USD", "XAG/USD", "USD/JPY"]
 TIMEFRAMES = ["1h", "4h", "1d"]
 
 

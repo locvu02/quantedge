@@ -28,7 +28,7 @@ ASSET_KEYWORDS = {
     "BTC/USDT": ["bitcoin", "btc", "crypto market cap", "crypto regulation"],
     "ETH/USDT": ["ethereum", "eth", "defi", "smart contract", "layer 2"],
     "XAU/USD": ["gold", "xau", "precious metals", "fed rate", "inflation"],
-    "EUR/USD": ["eur", "euro", "ecb", "eurozone", "dollar index"],
+    "USD/JPY": ["usd", "jpy", "yen", "boj", "dollar yen"],
 }
 
 
@@ -91,7 +91,7 @@ def get_sentiment_for_symbol(symbol: str, articles: list[dict]) -> Optional[dict
 
 async def scan_sentiment(symbols: list[str] = None) -> list[dict]:
     if symbols is None:
-        symbols = ["BTC/USDT", "ETH/USDT", "XAU/USD", "EUR/USD"]
+        symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XAU/USD", "XAG/USD", "USD/JPY"]
 
     articles = await fetch_crypto_news()
     if not articles:
