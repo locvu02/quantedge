@@ -72,12 +72,28 @@ class PaperTradingEngine:
         # Sentiment filter
         try:
             from core.models.sentiment import fetch_crypto_news, get_sentiment_for_symbol
-            import asyncio as _asyncio
             articles = await fetch_crypto_news(limit=10)
             sentiment = get_sentiment_for_symbol(symbol, articles)
             if sentiment and sentiment["bias"] == "bearish" and direction == "long":
                 return
             if sentiment and sentiment["bias"] == "bullish" and direction == "short":
+                return
+        except Exception:
+            pass
+
+        # Real-time news filter
+        try:
+            from core.models.news_crawler import news_filter
+            if not await news_filter(symbol, direction):
+                return
+        except Exception:
+            pass
+
+        # Market microstructure filter
+        try:
+            from core.models.microstructure import microstructure as ms
+            micro = await ms.get_micro_signal(symbol)
+            if micro and micro["direction"] != direction and micro["confidence"] > 0.3:
                 return
         except Exception:
             pass
